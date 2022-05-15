@@ -1,0 +1,307 @@
+
+
+
+
+// Clases MapBiomas:
+
+// 22: Sin vegetacion
+// 33: Cuerpos de Agua 
+// 14: Agricultura
+// 12: Pastizales Naturales
+// 11: Pantanos y Humedales
+// 9: Plantacion Forestal Antropica
+// 3: Plantacion Forestal Natural 
+
+var biomas = biomas2019
+
+var PF_natural = biomas.eq(3)
+var Agro = biomas.eq(14)
+var Past_natural = biomas.eq(12)
+var Pantanos = biomas.eq(11)
+var PF_antro = biomas.eq(9)
+
+
+// Result: 37999
+
+
+var PF_antro_mask = PF_antro.updateMask(PF_antro)
+var Agro_mask = Agro.updateMask(Agro)
+var Past_natural_mask = Past_natural.updateMask(Past_natural)
+var Pantanos_mask = Pantanos.updateMask(Pantanos)
+var PF_natural_mask = PF_natural.updateMask(PF_natural)
+
+
+
+Map.addLayer(biomas,
+             {min: 0, max: 33, palette: igbpPalette},
+             'PF_antro_raster');
+             
+             
+             
+// Productos a utilizar: MODIS/006/MOD13Q1 (escala 16 dias, 250 metros)
+//                       MODIS/MCD43A4_006_EVI (escala diaria, 450 metros)
+
+
+              
+/***
+var evi = ee.ImageCollection("MODIS/006/MOD13Q1")
+            .select('EVI')
+            .filter(ee.Filter.date('2019-01-01', '2019-12-31'));
+
+/////// Convertir las mascaras de cada clase a formato vectorial 
+var PF_antro_vector = PF_antro_mask.reduceToVectors({
+  crs: 'EPSG:32721',
+  maxPixels: 1e8,
+  scale: 30,
+  geometryType: 'polygon',
+  eightConnected: false,
+  reducer: ee.Reducer.countEvery()
+});
+
+var Agro_vector = Agro_mask.reduceToVectors({
+  crs: 'EPSG:32721',
+  maxPixels: 1e8,
+  scale: 30,
+  geometryType: 'polygon',
+  eightConnected: false,
+  reducer: ee.Reducer.countEvery()
+});
+
+
+var Past_vector = Past_natural_mask.reduceToVectors({
+  crs: 'EPSG:32721',
+  maxPixels: 1e8,
+  scale: 30,
+  geometryType: 'polygon',
+  eightConnected: false,
+  reducer: ee.Reducer.countEvery()
+});
+
+
+var Pantanos_vector = Pantanos_mask.reduceToVectors({
+  crs: 'EPSG:32721',
+  maxPixels: 1e8,
+  scale: 30,
+  geometryType: 'polygon',
+  eightConnected: false,
+  reducer: ee.Reducer.countEvery()
+});
+
+var PF_natural_vector = PF_natural_mask.reduceToVectors({
+  crs: 'EPSG:32721',
+  maxPixels: 1e8,
+  scale: 30,
+  geometryType: 'polygon',
+  eightConnected: false,
+  reducer: ee.Reducer.countEvery()
+});
+
+/////////////////////////////////////////////////////////
+
+Map.addLayer(PF_antro_vector,
+             {min: 0, max: 33, palette: igbpPalette},
+             'PF_antro_layer');
+
+
+// Image-collection para visualizar mascara en el mapa
+var evi_PF_antro_mask = evi.map(function(image) { return image.updateMask(PF_antro); });
+
+
+
+var colorizedVis = {
+  min: 0,
+  max: 1.0,
+  palette: [
+    'FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718', '74A901',
+    '66A000', '529400', '3E8601', '207401', '056201', '004C00', '023B01',
+    '012E01', '011D01', '011301'
+  ],
+};
+
+Map.addLayer(evi_PF_antro_mask, colorizedVis, 'EVI mask');
+Map.addLayer(evi, colorizedVis, 'EVI ');
+
+/// Recorte de collection EVI sobre capa vectorial
+var evi_PF_antro_clip = evi.map(function(image) { return image.clip(PF_antro_vector); });
+
+evi = evi.map(function(img){
+  var date = img.get('system:time_start');
+  return img.set('system_time_start', date);
+});
+
+
+
+// Create a function that takes an image, calculates the mean over a
+// geometry and returns the value and the corresponding date as a 
+// feature.
+var createTS = function(img){
+  var date = img.get('system_time_start');
+  var value_pf_antro = img.reduceRegion({reducer: ee.Reducer.median(), geometry: PF_antro_vector}).get('EVI');
+//   var value_pf_antro_75 = img.reduceRegion({reducer: ee.Reducer.percentile([75]) , geometry: PF_antro_vector}).get('EVI');
+//   var value_pf_antro_25 = img.reduceRegion({reducer: ee.Reducer.percentile([25]) , geometry: PF_antro_vector}).get('EVI');
+  var value_agro = img.reduceRegion({reducer: ee.Reducer.median(), geometry: Agro_vector}).get('EVI');
+//  var value_agro_75 = img.reduceRegion({reducer: ee.Reducer.percentile([75]), geometry: Agro_vector}).get('EVI');
+//  var value_agro_25 = img.reduceRegion({reducer: ee.Reducer.percentile([25]), geometry: Agro_vector}).get('EVI');
+  var value_past = img.reduceRegion({reducer: ee.Reducer.median(), geometry: Past_vector}).get('EVI');
+//  var value_past_75 = img.reduceRegion({reducer: ee.Reducer.percentile([75]), geometry: Past_vector}).get('EVI');
+//   var value_past_25 = img.reduceRegion({reducer: ee.Reducer.percentile([25]), geometry: Past_vector}).get('EVI');
+  var value_pant = img.reduceRegion({reducer: ee.Reducer.median(), geometry: Pantanos_vector}).get('EVI');
+//  var value_pant_75 = img.reduceRegion({reducer: ee.Reducer.percentile([75]), geometry: Pantanos_vector}).get('EVI');
+//  var value_pant_25 = img.reduceRegion({reducer: ee.Reducer.percentile([25]), geometry: Pantanos_vector}).get('EVI');
+  var value_pf_nat = img.reduceRegion({reducer: ee.Reducer.median(), geometry: PF_natural_vector}).get('EVI');
+//  var value_pf_nat_75 = img.reduceRegion({reducer: ee.Reducer.percentile([75]), geometry: PF_natural_vector}).get('EVI');
+//    var value_pf_nat_25 = img.reduceRegion({reducer: ee.Reducer.percentile([25]), geometry: PF_natural_vector}).get('EVI');
+
+ 
+  var ft = ee.Feature(null, {'system:time_start': date, 
+                             'date': ee.Date(date).format('Y/M/d'), 
+                             'Agro': value_agro,
+                             //'Agro_q75': value_agro_75,
+                             //'Agro_q25': value_agro_25,
+                             'Past_nat': value_past,
+                             //'Past_nat_q75': value_past_75,
+                             //'Past_nat_q25': value_past_25,
+                             'Bañados': value_pant,
+                             //'Bañados_q75': value_pant_75,
+                             //'Bañados_q25': value_pant_25,
+                             'PF_natu' : value_pf_nat,
+                             //'PF_natu_q75' : value_pf_nat_75,
+                             //'PF_natu_q25' : value_pf_nat_25,
+                             'PF_antro': value_pf_antro});
+                             //'PF_antro_q75': value_pf_antro_75,
+                             //'PF_antro_q25': value_pf_antro_25});
+  return ft;
+};
+
+// Apply the function to each image in modisLST.
+var TS = evi.map(createTS);
+
+// Create a graph of the time-series.
+//var graph = ui.Chart.feature.byFeature(TS, 'system:time_start', 'value');
+
+//print(graph.setChartType("ColumnChart")
+//           .setOptions({vAxis: {title: 'LST [deg. C]'},
+//                        hAxis: {title: 'Date'}}));
+
+// Export the time-series as a csv.
+//Export.table.toDrive({collection: TS, description: 'EVI-2000-csv', folder: 'earth_engine_data',
+//  fileFormat: 'CSV',selectors: 'date, Agro, Agro_q75, Agro_q25, Past_nat, Past_nat_q75, Past_nat_q25, Bañados, Bañados_q75, Bañados_q25,  PF_natu, PF_natu_q75, PF_natu_q25, PF_antro, PF_antro_q75, PF_antro_q25'});
+
+Export.table.toDrive({collection: TS, description: 'EVI-2000-csv', folder: 'earth_engine_data',
+  fileFormat: 'CSV',selectors: 'date, Agro, Past_nat, Bañados,PF_natu,  PF_antro'});
+
+***/
+
+// Create a collection with fromImages().
+var Biomas = ee.ImageCollection.fromImages(
+  [biomas2000, biomas2001, biomas2002, biomas2003, biomas2004, biomas2005, biomas2006,
+  biomas2007, biomas2008, biomas2009, biomas2010, biomas2011, biomas2012, biomas2013,
+  biomas2014, biomas2015, biomas2016, biomas2017, biomas2018, biomas2019]);
+print('collectionFromImages: ', Biomas);
+
+Biomas = Biomas.map(function(img){
+  var date = img.get('system:time_start');
+  return img.set('system_time_start', date);
+});
+var bandNames = biomas2000.bandNames();
+print('Band names:', bandNames); 
+ 
+
+
+ var createTS = function(img){
+   
+             
+          var PF_natural = img.eq(3)
+          var Agro = img.eq(14)
+          var Past_natural = img.eq(12)
+          var Pantanos = img.eq(11)
+          var PF_antro = img.eq(9)
+          
+          var PF_antro_mask = PF_antro.updateMask(PF_antro)
+          var Agro_mask = Agro.updateMask(Agro)
+          var Past_natural_mask = Past_natural.updateMask(Past_natural)
+          var Pantanos_mask = Pantanos.updateMask(Pantanos)
+          var PF_natural_mask = PF_natural.updateMask(PF_natural)
+          
+   
+           var PF_antro_vector = PF_antro_mask.reduceToVectors({
+          crs: 'EPSG:32721',
+          maxPixels: 1e8,
+          scale: 30,
+          geometryType: 'polygon',
+          eightConnected: false,
+          reducer: ee.Reducer.countEvery()
+        });
+
+          var Agro_vector = Agro_mask.reduceToVectors({
+            crs: 'EPSG:32721',
+            maxPixels: 1e8,
+            scale: 30,
+            geometryType: 'polygon',
+            eightConnected: false,
+            reducer: ee.Reducer.countEvery()
+          });
+
+
+            var Past_vector = Past_natural_mask.reduceToVectors({
+              crs: 'EPSG:32721',
+              maxPixels: 1e8,
+              scale: 30,
+              geometryType: 'polygon',
+              eightConnected: false,
+              reducer: ee.Reducer.countEvery()
+            });
+
+
+            var Pantanos_vector = Pantanos_mask.reduceToVectors({
+              crs: 'EPSG:32721',
+              maxPixels: 1e8,
+              scale: 30,
+              geometryType: 'polygon',
+              eightConnected: false,
+              reducer: ee.Reducer.countEvery()
+            });
+
+            var PF_natural_vector = PF_natural_mask.reduceToVectors({
+              crs: 'EPSG:32721',
+              maxPixels: 1e8,
+              scale: 30,
+              geometryType: 'polygon',
+              eightConnected: false,
+              reducer: ee.Reducer.countEvery()
+            });
+
+   
+   
+  var date = img.get('system_time_start');
+  var value_pf_antro = img.reduceRegion({reducer: ee.Reducer.count(), geometry: PF_antro_vector}).get(ee.String(img.bandNames().get(0)));
+  var value_agro = img.reduceRegion({reducer: ee.Reducer.count(), geometry: Agro_vector}).get(ee.String(img.bandNames().get(0)));
+  var value_past = img.reduceRegion({reducer: ee.Reducer.count(), geometry: Past_vector}).get(ee.String(img.bandNames().get(0)));
+  var value_pant = img.reduceRegion({reducer: ee.Reducer.count(), geometry: Pantanos_vector}).get(ee.String(img.bandNames().get(0)));
+  var value_pf_nat = img.reduceRegion({reducer: ee.Reducer.count(), geometry: PF_natural_vector}).get(ee.String(img.bandNames().get(0)));
+
+ 
+  var ft = ee.Feature(null, {'system:time_start': date, 
+                             'date': ee.Date(date).format('Y/M/d'), 
+                             'Agro': value_agro,
+                             'Past_nat': value_past,
+                             'Bañados': value_pant,
+                             'PF_natu' : value_pf_nat,
+                             'PF_antro': value_pf_antro});
+  return ft;
+};
+
+// Apply the function to each image in modisLST.
+var TS = Biomas.map(createTS);
+
+
+
+// Export the time-series as a csv.
+//Export.table.toDrive({collection: TS, description: 'EVI-2000-csv', folder: 'earth_engine_data',
+//  fileFormat: 'CSV',selectors: 'date, Agro, Agro_q75, Agro_q25, Past_nat, Past_nat_q75, Past_nat_q25, Bañados, Bañados_q75, Bañados_q25,  PF_natu, PF_natu_q75, PF_natu_q25, PF_antro, PF_antro_q75, PF_antro_q25'});
+
+Export.table.toDrive({collection: TS, description: 'Biomas-dt-csv', folder: 'earth_engine_data',
+fileFormat: 'CSV',selectors: 'date, Agro, Past_nat, Bañados,PF_natu,  PF_antro'});
+ 
+var bandname = ee.String(biomas2019.bandNames().get(0))
+print(bandname)
